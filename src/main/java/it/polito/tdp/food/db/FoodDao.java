@@ -6,7 +6,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import it.polito.tdp.food.model.Adiacenza;
 import it.polito.tdp.food.model.Condiment;
 import it.polito.tdp.food.model.Food;
 import it.polito.tdp.food.model.Portion;
@@ -109,4 +111,69 @@ public class FoodDao {
 		}
 
 	}
+	
+	public void getFoods(int n, Map<Integer,Food> idMap){
+		String sql = "SELECT f.food_code AS id, f.display_name AS name "
+				+ "FROM .portion p, food f "
+				+ "WHERE p.food_code = f.food_code "
+				+ "GROUP BY p.food_code "
+				+ "HAVING COUNT(*) = ?" ;
+		try {
+			Connection conn = DBConnect.getConnection() ;
+
+			PreparedStatement st = conn.prepareStatement(sql) ;
+			
+			st.setInt(1, n);
+			
+			ResultSet res = st.executeQuery() ;
+			
+			while(res.next()) {
+		
+				idMap.put(res.getInt("id"), new Food(res.getInt("id"),res.getString("name")));
+				
+			}
+			
+			conn.close();
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+	}
+	
+	public List<Adiacenza> getAdicanze(Map<Integer,Food> idMap){
+		String sql = "SELECT Distinct fc1.food_code AS id1, fc2.food_code AS id2, AVG(c.condiment_calories) AS w "
+				+ "FROM food_condiment fc1, food_condiment fc2, condiment c "
+				+ "WHERE fc1.food_code > fc2.food_code AND fc1.condiment_code != fc2.condiment_code AND c.condiment_code = fc1.condiment_code "
+				+ "GROUP BY fc1.food_code, fc2.food_code" ;
+		
+		List<Adiacenza> result = new ArrayList<>();
+		try {
+			Connection conn = DBConnect.getConnection() ;
+
+			PreparedStatement st = conn.prepareStatement(sql) ;
+			
+			ResultSet res = st.executeQuery() ;
+			
+			while(res.next()) {
+		
+				if(idMap.containsKey(res.getInt("id1")) && idMap.containsKey(res.getInt("id2"))) {
+					
+					Adiacenza a = new Adiacenza(idMap.get(res.getInt("id1")), idMap.get(res.getInt("id2")), res.getDouble("w"));
+					result.add(a);
+					
+				}
+				
+			}
+			
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+
+	}
+	
 }
